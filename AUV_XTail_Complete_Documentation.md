@@ -108,7 +108,7 @@ $$
 
 with thrust $F_p = K_T \rho n^2 D_p^4$ and shaft torque $\tau_p = K_Q \rho n^2 D_p^5$. Correct inflow for wake fraction $v_p = (1 - w_T) u$ and hull deduction $F_x = (1 - t) F_p$. (Sec. 3.1 + App. A.1; Eqs. 3.12–3.18.)
 
-**Propeller RPM dynamics** (first order): $\dot{n} = (n_\mathrm{cmd} - n)/T_n$. (Eq. 4.21.)
+**Propeller RPM dynamics** (first order): $\dot{n} = (n_{cmd} - n)/T_n$. (Eq. 4.21.)
 
 ### 2.2 X-tail hydroplanes (3-D)
 
@@ -124,7 +124,7 @@ $$
 L_k = \tfrac{1}{2}\rho V_r^2 S_k\, C_L \cos \delta_e \sin \delta_e, \quad D_k = \tfrac{1}{2}\rho V_r^2 S_k\, C_D \sin^2 \delta_e,
 $$
 
-with $C_L = \frac{6.13\,\Lambda}{2.25 + \Lambda}$, $C_D = C_L^2/(\pi \Lambda)$, $\Lambda =$ aspect ratio. Map force to body axes using unit vectors $\hat{v}_r$ (for drag) and $N_k \times \hat{v}_r$ (for lift), then moment via $x_{HP,k} \times F_k$. (Fig. 4.2 & surrounding text.)
+with $C_L = \frac{6.13\,\Lambda}{2.25 + \Lambda}$, $C_D = C_L^2/(\pi \Lambda)$, $\Lambda =$ aspect ratio. Map force to body axes using unit vectors $\hat{v}_ r$ (for drag) and $N_k \times \hat{v}_ r$ (for lift), then moment via $x_ {HP,k} \times F_k$. (Fig. 4.2 & surrounding text.)
 
 ### X-tail geometry. 
 
@@ -147,8 +147,8 @@ Following both the **MathWorks example** (cascaded controller) and the **thesis*
 - **Heave (elevator) controller** in parallel: depth PID using tower/bow planes in elevator mode (we'll use zero tower fins or optional mid-body planes—kept as an interface; the stern X-tail can still handle depth sledge mode). (Thesis Figs. 4.10, 4.18.)
 
 - **Outer loop**:
-  - **Heading**: unwrap $\psi$, P-controller on error → $r_\mathrm{ref}$, with speed-dependent saturation (region scheduling). (Thesis Fig. 4.17.)
-  - **Depth**: either **sledge mode** (command $\theta_\mathrm{ref} \approx k_z(z_\mathrm{ref} - z)$) or **elevator** (heave PID acts directly on vertical force using planes); hysteresis around region borders per speed. (Thesis Figs. 4.14, 4.18; Table 4.2.)
+  - **Heading**: unwrap $\psi$, P-controller on error → $r_{ref}$, with speed-dependent saturation (region scheduling). (Thesis Fig. 4.17.)
+  - **Depth**: either **sledge mode** (command $\theta_{ref} \approx k_z(z_{ref} - z)$) or **elevator** (heave PID acts directly on vertical force using planes); hysteresis around region borders per speed. (Thesis Figs. 4.14, 4.18; Table 4.2.)
 
 - **Gain scheduling**: low/mid/high speed regions with hysteresis (e.g., ~3, 6, 8 m/s in the thesis). (Fig. 4.14 & Table 4.2.)
 
