@@ -11,8 +11,8 @@ Below is a complete **Technical Design Document (TDD)** that translates the thre
 
 - **"Sarhadi's Python model structure (RK4 integration, low-level rate PIDs) and REMUS lineage."**
 - **"MathWorks example on AUV 6-DoF modeling and control with cascaded loops and block-level 6-DoF dynamics."**
-- **"Hydrodynamics, hydrostatics, control architecture, X-tail vs '+' tail, hydroplane force modeling, thrust polynomials \(K_T\), \(K_Q\), and region-based control from *Simulation and Control of Submarines*"** (Lind & Meijer, 2014). The equations, figures, and controller concepts below reference that document.
-- **"Fossen's compact 6-DoF marine craft equations (matrix form for \(M, C, D, g\))."**
+- **"Hydrodynamics, hydrostatics, control architecture, X-tail vs '+' tail, hydroplane force modeling, thrust polynomials $K_T$, $K_Q$, and region-based control from *Simulation and Control of Submarines*"** (Lind & Meijer, 2014). The equations, figures, and controller concepts below reference that document.
+- **"Fossen's compact 6-DoF marine craft equations (matrix form for $M, C, D, g$)."**
 - **"Prestero's REMUS model as the basis of many community AUV parameter sets."**
 
 ---
@@ -21,11 +21,11 @@ Below is a complete **Technical Design Document (TDD)** that translates the thre
 
 **Goal.** A Python program that simulates and controls a torpedo-shaped AUV with:
 
-- **6-DoF rigid-body + added-mass dynamics, hydrostatics, linear & quadratic damping** (option to enable strip-theory cross-flow), single stern propeller with \(K_T\), \(K_Q\) polynomials, and four **X-tail hydroplanes**.
+- **6-DoF rigid-body + added-mass dynamics, hydrostatics, linear & quadratic damping** (option to enable strip-theory cross-flow), single stern propeller with $K_T$, $K_Q$ polynomials, and four **X-tail hydroplanes**.
 
-- An **allocation layer** that maps desired body torques \([K, M, N]\) to X-tail fin deflections.
+- An **allocation layer** that maps desired body torques $[K, M, N]$ to X-tail fin deflections.
 
-- A **cascaded autopilot** (outer depth & heading; inner \(r, \theta, \phi\)) with integrator anti-windup and speed-based gain scheduling, following the thesis architecture.
+- A **cascaded autopilot** (outer depth & heading; inner $r, \theta, \phi$) with integrator anti-windup and speed-based gain scheduling, following the thesis architecture.
 
 - An (optional) **EKF skeleton** for state estimation.
 
@@ -49,35 +49,35 @@ Below is a complete **Technical Design Document (TDD)** that translates the thre
 
 ## 1) Coordinates, states, and 6-DoF equations
 
-We use the body-fixed frame \(R\) at the center of buoyancy (CB) and an earth-fixed North-East-Down \(W\) frame. States:
+We use the body-fixed frame $R$ at the center of buoyancy (CB) and an earth-fixed North-East-Down $W$ frame. States:
 
-- **Pose** \(\eta = [x, y, z, \phi, \theta, \psi]^T\) (position in \(W\), Euler angles roll-pitch-yaw).
-- **Body velocity** \(\nu = [u, v, w, p, q, r]^T\).
+- **Pose** $\eta = [x, y, z, \phi, \theta, \psi]^T$ (position in $W$, Euler angles roll-pitch-yaw).
+- **Body velocity** $\nu = [u, v, w, p, q, r]^T$.
 
 ### Kinematics:
 
-\[
+$$
 \dot{\eta} = \begin{bmatrix}
 R_b^w(\phi,\theta,\psi) & 0_{3\times3} \\
 0_{3\times3} & T(\phi,\theta)
 \end{bmatrix} \nu
-\]
+$$
 
-where \(R_b^w\) is the body→world rotation and \(T(\phi,\theta)\) maps \(p, q, r\) to Euler angle rates. (Same as MathWorks' 6-DoF block and Fossen.)
+where $R_b^w$ is the body→world rotation and $T(\phi,\theta)$ maps $p, q, r$ to Euler angle rates. (Same as MathWorks' 6-DoF block and Fossen.)
 
 ### Dynamics in compact Fossen form:
 
-\[
+$$
 M \dot{\nu} + C(\nu)\, \nu + D(\nu)\, \nu + g(\eta) = \tau,
-\]
+$$
 
-with \(M = M_{RB} + M_A\) (rigid-body + added mass), \(C = C_{RB} + C_A\), \(D\) linear+quadratic damping (optionally cross-flow), \(g(\eta)\) the hydrostatic restoring forces, and \(\tau\) external forces/moments (propeller + control surfaces).
+with $M = M_{RB} + M_A$ (rigid-body + added mass), $C = C_{RB} + C_A$, $D$ linear+quadratic damping (optionally cross-flow), $g(\eta)$ the hydrostatic restoring forces, and $\tau$ external forces/moments (propeller + control surfaces).
 
 ### Hydrostatics (from the thesis). 
 
-Using CB as origin, the restoring vector \(g\) is (Eq. 4.5):
+Using CB as origin, the restoring vector $g$ is (Eq. 4.5):
 
-\[
+$$
 \begin{aligned}
 X_{HS} &= -(W - B) \sin \theta, \\
 Y_{HS} &= (W - B) \cos \theta \sin \phi, \\
@@ -86,9 +86,9 @@ K_{HS} &= (y_G - y_B) \cos \theta \cos \phi - (z_G - z_B) \cos \theta \sin \phi,
 M_{HS} &= -(x_G - x_B) \cos \theta \cos \phi - (z_G - z_B) \sin \theta, \\
 N_{HS} &= (x_G - x_B) \cos \theta \sin \phi - (y_G - y_B) \sin \theta.
 \end{aligned}
-\]
+$$
 
-(In practice \(x_B, y_B, z_B = 0\) since the body origin is at CB.)
+(In practice $x_B, y_B, z_B = 0$ since the body origin is at CB.)
 
 ### Hydrodynamics (from the thesis). 
 
@@ -100,39 +100,39 @@ The model uses (i) **added mass**, (ii) **viscous damping** (linear & quadratic)
 
 ### 2.1 Single stern propeller (thrust & torque)
 
-Use the standard dimensionless polynomials in **advance ratio** \(J = v_p/(n D_p)\):
+Use the standard dimensionless polynomials in **advance ratio** $J = v_p/(n D_p)$:
 
-\[
+$$
 K_T(J) = \sum_{i=0}^8 a_i J^i, \quad K_Q(J) = \sum_{i=0}^8 b_i J^i,
-\]
+$$
 
-with thrust \(F_p = K_T \rho n^2 D_p^4\) and shaft torque \(\tau_p = K_Q \rho n^2 D_p^5\). Correct inflow for wake fraction \(v_p = (1 - w_T) u\) and hull deduction \(F_x = (1 - t) F_p\). (Sec. 3.1 + App. A.1; Eqs. 3.12–3.18.)
+with thrust $F_p = K_T \rho n^2 D_p^4$ and shaft torque $\tau_p = K_Q \rho n^2 D_p^5$. Correct inflow for wake fraction $v_p = (1 - w_T) u$ and hull deduction $F_x = (1 - t) F_p$. (Sec. 3.1 + App. A.1; Eqs. 3.12–3.18.)
 
-**Propeller RPM dynamics** (first order): \(\dot{n} = (n_{\text{cmd}} - n)/T_n\). (Eq. 4.21.)
+**Propeller RPM dynamics** (first order): $\dot{n} = (n_{\text{cmd}} - n)/T_n$. (Eq. 4.21.)
 
 ### 2.2 X-tail hydroplanes (3-D)
 
-For hydroplane \(k\) at position \(x_{HP,k}\) with unit normal \(N_k\), compute **local inflow**
+For hydroplane $k$ at position $x_{HP,k}$ with unit normal $N_k$, compute **local inflow**
 
-\[
+$$
 v_r = -(v_1 + v_2 \times x_{HP,k}),
-\]
+$$
 
-project onto plane orthogonal to \(N_k\), then compute **hydrodynamic rudder angle** \(\delta_h\) and **effective angle** \(\delta_e = \delta - \delta_h\). Lift/drag (Toxopeus-style, thesis Eqs. 3.4–3.11, 4.17–4.19):
+project onto plane orthogonal to $N_k$, then compute **hydrodynamic rudder angle** $\delta_h$ and **effective angle** $\delta_e = \delta - \delta_h$. Lift/drag (Toxopeus-style, thesis Eqs. 3.4–3.11, 4.17–4.19):
 
-\[
+$$
 L_k = \tfrac{1}{2}\rho V_r^2 S_k\, C_L \cos \delta_e \sin \delta_e, \quad D_k = \tfrac{1}{2}\rho V_r^2 S_k\, C_D \sin^2 \delta_e,
-\]
+$$
 
-with \(C_L = \frac{6.13\,\Lambda}{2.25 + \Lambda}\), \(C_D = C_L^2/(\pi \Lambda)\), \(\Lambda =\) aspect ratio. Map force to body axes using unit vectors \(\hat{v}_r\) (for drag) and \(N_k \times \hat{v}_r\) (for lift), then moment via \(x_{HP,k} \times F_k\). (Fig. 4.2 & surrounding text.)
+with $C_L = \frac{6.13\,\Lambda}{2.25 + \Lambda}$, $C_D = C_L^2/(\pi \Lambda)$, $\Lambda =$ aspect ratio. Map force to body axes using unit vectors $\hat{v}_r$ (for drag) and $N_k \times \hat{v}_r$ (for lift), then moment via $x_{HP,k} \times F_k$. (Fig. 4.2 & surrounding text.)
 
 ### X-tail geometry. 
 
-Use four fins at dihedral \(\pm 45^\circ\). For a torpedo, good defaults are
+Use four fins at dihedral $\pm 45^\circ$. For a torpedo, good defaults are
 
-\[
+$$
 N_{1..4} \in \left\{(0, \tfrac{1}{\sqrt{2}}, \tfrac{1}{\sqrt{2}}),\; (0, \tfrac{1}{\sqrt{2}}, -\tfrac{1}{\sqrt{2}}),\; (0, -\tfrac{1}{\sqrt{2}}, -\tfrac{1}{\sqrt{2}}),\; (0, -\tfrac{1}{\sqrt{2}}, \tfrac{1}{\sqrt{2}})\right\}
-\]
+$$
 
 (upper-right, lower-right, lower-left, upper-left). The thesis explicitly discusses **×** versus **+** layouts and shows the **X configuration advantages**. (Fig. 1.4, Section 1.1; Sec. 4.2 "Control surfaces".)
 
@@ -140,25 +140,25 @@ N_{1..4} \in \left\{(0, \tfrac{1}{\sqrt{2}}, \tfrac{1}{\sqrt{2}}),\; (0, \tfrac{
 
 ## 3) Control architecture
 
-Following both the **MathWorks example** (cascaded controller) and the **thesis** (inner \(r, \phi, \theta\) loop + outer heading/depth with mode switching), we implement:
+Following both the **MathWorks example** (cascaded controller) and the **thesis** (inner $r, \phi, \theta$ loop + outer heading/depth with mode switching), we implement:
 
-- **Inner loop**: controls \(r, \theta, \phi\) with PI(D) rate/attitude loops and integrator tracking/anti-windup. (Thesis Fig. 4.8, Sections 4.4 "Inner controller" and 5.1–5.2 on saturations/bandwidth; MathWorks example shows a similar cascade.)
+- **Inner loop**: controls $r, \theta, \phi$ with PI(D) rate/attitude loops and integrator tracking/anti-windup. (Thesis Fig. 4.8, Sections 4.4 "Inner controller" and 5.1–5.2 on saturations/bandwidth; MathWorks example shows a similar cascade.)
 
 - **Heave (elevator) controller** in parallel: depth PID using tower/bow planes in elevator mode (we'll use zero tower fins or optional mid-body planes—kept as an interface; the stern X-tail can still handle depth sledge mode). (Thesis Figs. 4.10, 4.18.)
 
 - **Outer loop**:
-  - **Heading**: unwrap \(\psi\), P-controller on error → \(r_{\text{ref}}\), with speed-dependent saturation (region scheduling). (Thesis Fig. 4.17.)
-  - **Depth**: either **sledge mode** (command \(\theta_{\text{ref}} \approx k_z(z_{\text{ref}} - z)\)) or **elevator** (heave PID acts directly on vertical force using planes); hysteresis around region borders per speed. (Thesis Figs. 4.14, 4.18; Table 4.2.)
+  - **Heading**: unwrap $\psi$, P-controller on error → $r_{\text{ref}}$, with speed-dependent saturation (region scheduling). (Thesis Fig. 4.17.)
+  - **Depth**: either **sledge mode** (command $\theta_{\text{ref}} \approx k_z(z_{\text{ref}} - z)$) or **elevator** (heave PID acts directly on vertical force using planes); hysteresis around region borders per speed. (Thesis Figs. 4.14, 4.18; Table 4.2.)
 
 - **Gain scheduling**: low/mid/high speed regions with hysteresis (e.g., ~3, 6, 8 m/s in the thesis). (Fig. 4.14 & Table 4.2.)
 
 ### Control allocation for X-tail. 
 
-A key addition versus a +-tail is allocating \([K, M, N]\) demands to four fins. We compute a **local effectiveness matrix** \(B(\nu) \in \mathbb{R}^{3\times4}\) numerically (small perturbations of \(\delta_k\)) and solve a **weighted least-squares** (with Tikhonov \(\lambda\)) for \(\delta\):
+A key addition versus a +-tail is allocating $[K, M, N]$ demands to four fins. We compute a **local effectiveness matrix** $B(\nu) \in \mathbb{R}^{3\times4}$ numerically (small perturbations of $\delta_k$) and solve a **weighted least-squares** (with Tikhonov $\lambda$) for $\delta$:
 
-\[
+$$
 \min_\delta \|B\delta - \tau_{\text{cmd}}\|_2^2 + \lambda\|\delta\|_2^2 \text{ with } \delta_k \in [\delta_{\min}, \delta_{\max}].
-\]
+$$
 
 This is the same philosophy found in X-rudder allocation papers (quadruple rudder allocation & QP variants) but implemented lightweight here for runtime.
 
@@ -172,7 +172,7 @@ The code below is intentionally **modular** and **readable**. It implements:
 - **"hydrostatics (thesis Eq. 4.5),"**
 - **"damping (linear+quadratic; optional cross-flow),"**
 - **"X-tail hydroplanes (thesis Eqs. 3.4–3.11, 4.17–4.19),"**
-- **"single propeller with \(K_T\), \(K_Q\) polynomials (thesis App. A.1),"**
+- **"single propeller with $K_T$, $K_Q$ polynomials (thesis App. A.1),"**
 - **"X-tail control allocation (numeric Jacobian),"**
 - **"cascaded controller with region logic,"**
 - **"RK4 integration and split-rate updates (20 Hz plant / 4 Hz controller) as in the thesis."**
@@ -191,24 +191,24 @@ The structure borrows the model loop organization and integrator spirit from Sar
 
 | **Spec** | **Math (where from)** | **Code location** |
 |----------|----------------------|-------------------|
-| **Frames & kinematics** | \(\dot{\eta} = J(\eta)\nu\). Fossen, MathWorks 6-DoF block. | `Rb2w`, `T_euler`, `AUV.plant_rhs` |
-| **Rigid-body + added mass** | \(M = M_{RB} + M_A\), \(C = C_{RB} + C_A\) in compact 6-DoF form. | `Inertia.MRB/CRB`, `AddedMass.MA/CA` |
+| **Frames & kinematics** | $\dot{\eta} = J(\eta)\nu$. Fossen, MathWorks 6-DoF block. | `Rb2w`, `T_euler`, `AUV.plant_rhs` |
+| **Rigid-body + added mass** | $M = M_{RB} + M_A$, $C = C_{RB} + C_A$ in compact 6-DoF form. | `Inertia.MRB/CRB`, `AddedMass.MA/CA` |
 | **Hydrostatics** | Thesis Eq. (4.5). | `Hydrostatics.g` |
 | **Viscous damping** | Linear & quadratic diag; optional strip-theory cross-flow integrals (Eqs. 4.15–4.16). | `Damping.D`, `Damping.crossflow_forces` |
-| **Propulsor** | \(K_T\), \(K_Q\) polynomials (App. A.1), thrust deduction & wake fraction (Eqs. 3.12–3.18), RPM dynamics (Eq. 4.21). | `Propeller.thrust_and_torque`, `Propeller.step` |
-| **Hydroplanes (3-D)** | Effective angle \(\delta_e = \delta - \delta_h\), lift/drag formulae (Eqs. 3.4–3.11), local inflow (Eqs. 4.17–4.19). | `Hydroplane.forces`, `Hydroplane.step` |
-| **X-tail allocation** | Local effectiveness matrix \(B\) & WLS solve; consistent with X-rudder allocation literature. | `XTailAllocator.effectiveness/allocate` |
-| **Control loops** | Inner \(r, \phi, \theta\) loop + outer heading/depth, mode switching, rate saturations; same structure as thesis & MathWorks cascade. | `Autopilot` (PIs, region logic, references) |
+| **Propulsor** | $K_T$, $K_Q$ polynomials (App. A.1), thrust deduction & wake fraction (Eqs. 3.12–3.18), RPM dynamics (Eq. 4.21). | `Propeller.thrust_and_torque`, `Propeller.step` |
+| **Hydroplanes (3-D)** | Effective angle $\delta_e = \delta - \delta_h$, lift/drag formulae (Eqs. 3.4–3.11), local inflow (Eqs. 4.17–4.19). | `Hydroplane.forces`, `Hydroplane.step` |
+| **X-tail allocation** | Local effectiveness matrix $B$ & WLS solve; consistent with X-rudder allocation literature. | `XTailAllocator.effectiveness/allocate` |
+| **Control loops** | Inner $r, \phi, \theta$ loop + outer heading/depth, mode switching, rate saturations; same structure as thesis & MathWorks cascade. | `Autopilot` (PIs, region logic, references) |
 
 ---
 
 ## 6) Tuning and operating the system
 
-1. **Populate parameters.** Use your vehicle's \(m\), \(I_g\), \(r_g\); pick added-mass and damping from CFD/tests or REMUS-like sets. Prestero's thesis and Sarhadi's repo are common starting points.
+1. **Populate parameters.** Use your vehicle's $m$, $I_g$, $r_g$; pick added-mass and damping from CFD/tests or REMUS-like sets. Prestero's thesis and Sarhadi's repo are common starting points.
 
-2. **Controller gains & regions.** Begin with conservative values (e.g., `r_max` \(\in [5^\circ/s, 15^\circ/s]\), `th_max` \(\in [10^\circ, 20^\circ]\)), and schedule them for low/mid/high speed as in the thesis (Fig. 4.14, Table 4.2).
+2. **Controller gains & regions.** Begin with conservative values (e.g., `r_max` $\in [5^\circ/s, 15^\circ/s]$, `th_max` $\in [10^\circ, 20^\circ]$), and schedule them for low/mid/high speed as in the thesis (Fig. 4.14, Table 4.2).
 
-3. **Allocator weights.** The WLS \(\lambda\) regularizes deflections; to bias use of certain fins add a diagonal weight \(W\) in \(\min \|W B\delta - W\tau\|^2\).
+3. **Allocator weights.** The WLS $\lambda$ regularizes deflections; to bias use of certain fins add a diagonal weight $W$ in $\min \|W B\delta - W\tau\|^2$.
 
 4. **Heave (elevator) mode.** If you add mid-body planes (tower/bow), connect a vertical-force PID like the thesis' **heave controller**; set X-tail depth role to **sledge mode** only at mid/high speed. (Thesis Figs. 4.10, 4.18; Table 4.2.)
 
@@ -224,13 +224,13 @@ Use the same **20 Hz plant / 4 Hz controller** update rates.
 
 - **TC-2 (accelerate across regions with a depth step).** Observe mode change from elevator→sledge and associated increase in depth-change rate. (Figs. 5.5–5.8.)
 
-- **TC-3 (two full turns while accelerating).** See higher turning rate at higher \(u\) (lift \(\propto u^2\)); roll compensation grows with speed. (Figs. 5.9–5.13.)
+- **TC-3 (two full turns while accelerating).** See higher turning rate at higher $u$ (lift $\propto u^2$); roll compensation grows with speed. (Figs. 5.9–5.13.)
 
 ---
 
 ## 8) Estimation (optional)
 
-The thesis used a **Kalman estimator** for unknown states. You can add an EKF with process model `AUV.plant_rhs` and measurements \(y = [\phi, \theta, \psi, u, p, q, r, z]\) (INS + log + depth). (Thesis §4.4 "Observer".)
+The thesis used a **Kalman estimator** for unknown states. You can add an EKF with process model `AUV.plant_rhs` and measurements $y = [\phi, \theta, \psi, u, p, q, r, z]$ (INS + log + depth). (Thesis §4.4 "Observer".)
 
 MathWorks' example provides a good blueprint for sensor models and swapping **low/high-fidelity sensors**.
 
@@ -242,13 +242,13 @@ MathWorks' example provides a good blueprint for sensor models and swapping **lo
 
 - **MathWorks example**: We adopt the **cascaded control** (outer position/velocity; inner attitude/rate) and the **6-DoF kinematic block structure**. If you later move to Simulink HIL, your Python model will align with those block semantics.
 
-- **Thesis (Lind & Meijer)**: This TDD directly implements the **hydrostatics formula** (Eq. 4.5), **hydroplane forces** (Eqs. 3.4–3.11, 4.17–4.19), **propeller** \(K_T/K_Q\) (App. A.1), **actuator time constants** (Eqs. 4.20–4.21), and the **two-level controller** with **region logic**, **heave controller concept**, and **saturations/hysteresis** (Figs. 4.14–4.19).
+- **Thesis (Lind & Meijer)**: This TDD directly implements the **hydrostatics formula** (Eq. 4.5), **hydroplane forces** (Eqs. 3.4–3.11, 4.17–4.19), **propeller** $K_T/K_Q$ (App. A.1), **actuator time constants** (Eqs. 4.20–4.21), and the **two-level controller** with **region logic**, **heave controller concept**, and **saturations/hysteresis** (Figs. 4.14–4.19).
 
 ---
 
 ## 10) Next steps and options
 
-- **Parameter identification**: tune \(M_A\), \(D\) via CFD or tests (Prestero-style ID).
+- **Parameter identification**: tune $M_A$, $D$ via CFD or tests (Prestero-style ID).
 
 - **Improved allocator**: upgrade to a constrained QP with rate limits and fault tolerance (see X-rudder allocation papers).
 
@@ -260,7 +260,7 @@ MathWorks' example provides a good blueprint for sensor models and swapping **lo
 
 ## 11) Closing remarks
 
-*The program above "follows the math" from your resources and implements the missing pieces for an X-tail with a single thruster.* It keeps Sarhadi's approachable Python structure, adopts MathWorks' cascaded control idea for clarity, and uses the thesis equations for the hydrodynamics, hydrostatics, and control structure—including X-tail geometry, \(K_T/K_Q\) propulsion polynomials, and region-based mode switching.
+*The program above "follows the math" from your resources and implements the missing pieces for an X-tail with a single thruster.* It keeps Sarhadi's approachable Python structure, adopts MathWorks' cascaded control idea for clarity, and uses the thesis equations for the hydrodynamics, hydrostatics, and control structure—including X-tail geometry, $K_T/K_Q$ propulsion polynomials, and region-based mode switching.
 
 If you want, I can tailor the parameter file to your submarine's exact geometry (length, diameter, fin area/lever arms, CG/CB offsets) and pre-tune the loops for your test cases.
 
@@ -758,7 +758,7 @@ print("Final pos (m):", auv.eta[:3], "heading (deg):", np.rad2deg(auv.eta[5]))
 
 3. **Lind & Meijer (2014). *Simulation and Control of Submarines***
    - Master's thesis, Lund University
-   - Covers: Hydrodynamics, hydrostatics, control architecture, X-tail vs "+" tail, hydroplane force modeling, thrust polynomials \(K_T\), \(K_Q\), and region-based control
+   - Covers: Hydrodynamics, hydrostatics, control architecture, X-tail vs "+" tail, hydroplane force modeling, thrust polynomials $K_T$, $K_Q$, and region-based control
    - Referenced throughout this TDD for equations (e.g., Eq. 4.5, Eqs. 3.4–3.11, 4.17–4.19, App. A.1)
 
 4. **Naval Postgraduate School (1997). "6 DOF Nonlinear AUV Simulation Toolbox"**
@@ -766,7 +766,7 @@ print("Final pos (m):", auv.eta[:3], "heading (deg):", np.rad2deg(auv.eta[5]))
    - PDF: https://nps.edu/documents/106842137/106977447/6+DOF+Nonlinear+AUV+Simulation+Toolbox.pdf/484bab10-a176-450d-a74f-19fad5bea02b
 
 5. **Fossen, T. I. (1994). *Guidance and Control of Ocean Vehicles***
-   - Compact 6-DoF marine craft equations (matrix form for \(M, C, D, g\))
+   - Compact 6-DoF marine craft equations (matrix form for $M, C, D, g$)
 
 6. **Prestero, T. (2001). "Verification of a Six-Degree of Freedom Simulation Model for the REMUS Autonomous Underwater Vehicle"**
    - MIT Master's thesis
