@@ -760,6 +760,7 @@ print("Final pos (m):", auv.eta[:3], "heading (deg):", np.rad2deg(auv.eta[5]))
    - Master's thesis, Lund University
    - Covers: Hydrodynamics, hydrostatics, control architecture, X-tail vs "+" tail, hydroplane force modeling, thrust polynomials $K_T$, $K_Q$, and region-based control
    - Referenced throughout this TDD for equations (e.g., Eq. 4.5, Eqs. 3.4–3.11, 4.17–4.19, App. A.1)
+   - PDF: https://lup.lub.lu.se/luur/download?fileOId=4646331&func=downloadFile&recordOId=4646251
 
 4. **Naval Postgraduate School (1997). "6 DOF Nonlinear AUV Simulation Toolbox"**
    - Chen, X., Marco, D., Smith, S., An, E., Ganesan, K., Healey, T.
