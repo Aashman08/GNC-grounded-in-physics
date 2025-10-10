@@ -108,7 +108,7 @@ $$
 
 with thrust $F_p = K_T \rho n^2 D_p^4$ and shaft torque $\tau_p = K_Q \rho n^2 D_p^5$. Correct inflow for wake fraction $v_p = (1 - w_T) u$ and hull deduction $F_x = (1 - t) F_p$. (Sec. 3.1 + App. A.1; Eqs. 3.12–3.18.)
 
-**Propeller RPM dynamics** (first order): $\dot{n} = (n_{\text{cmd}} - n)/T_n$. (Eq. 4.21.)
+**Propeller RPM dynamics** (first order): $\dot{n} = (n_\mathrm{cmd} - n)/T_n$. (Eq. 4.21.)
 
 ### 2.2 X-tail hydroplanes (3-D)
 
@@ -131,7 +131,7 @@ with $C_L = \frac{6.13\,\Lambda}{2.25 + \Lambda}$, $C_D = C_L^2/(\pi \Lambda)$, 
 Use four fins at dihedral $\pm 45^\circ$. For a torpedo, good defaults are
 
 $$
-N_{1..4} \in \left\{(0, \tfrac{1}{\sqrt{2}}, \tfrac{1}{\sqrt{2}}),\; (0, \tfrac{1}{\sqrt{2}}, -\tfrac{1}{\sqrt{2}}),\; (0, -\tfrac{1}{\sqrt{2}}, -\tfrac{1}{\sqrt{2}}),\; (0, -\tfrac{1}{\sqrt{2}}, \tfrac{1}{\sqrt{2}})\right\}
+N_{1..4} \in \{ (0, \tfrac{1}{\sqrt{2}}, \tfrac{1}{\sqrt{2}}),\; (0, \tfrac{1}{\sqrt{2}}, -\tfrac{1}{\sqrt{2}}),\; (0, -\tfrac{1}{\sqrt{2}}, -\tfrac{1}{\sqrt{2}}),\; (0, -\tfrac{1}{\sqrt{2}}, \tfrac{1}{\sqrt{2}}) \}
 $$
 
 (upper-right, lower-right, lower-left, upper-left). The thesis explicitly discusses **×** versus **+** layouts and shows the **X configuration advantages**. (Fig. 1.4, Section 1.1; Sec. 4.2 "Control surfaces".)
@@ -147,8 +147,8 @@ Following both the **MathWorks example** (cascaded controller) and the **thesis*
 - **Heave (elevator) controller** in parallel: depth PID using tower/bow planes in elevator mode (we'll use zero tower fins or optional mid-body planes—kept as an interface; the stern X-tail can still handle depth sledge mode). (Thesis Figs. 4.10, 4.18.)
 
 - **Outer loop**:
-  - **Heading**: unwrap $\psi$, P-controller on error → $r_{\text{ref}}$, with speed-dependent saturation (region scheduling). (Thesis Fig. 4.17.)
-  - **Depth**: either **sledge mode** (command $\theta_{\text{ref}} \approx k_z(z_{\text{ref}} - z)$) or **elevator** (heave PID acts directly on vertical force using planes); hysteresis around region borders per speed. (Thesis Figs. 4.14, 4.18; Table 4.2.)
+  - **Heading**: unwrap $\psi$, P-controller on error → $r_\mathrm{ref}$, with speed-dependent saturation (region scheduling). (Thesis Fig. 4.17.)
+  - **Depth**: either **sledge mode** (command $\theta_\mathrm{ref} \approx k_z(z_\mathrm{ref} - z)$) or **elevator** (heave PID acts directly on vertical force using planes); hysteresis around region borders per speed. (Thesis Figs. 4.14, 4.18; Table 4.2.)
 
 - **Gain scheduling**: low/mid/high speed regions with hysteresis (e.g., ~3, 6, 8 m/s in the thesis). (Fig. 4.14 & Table 4.2.)
 
@@ -157,7 +157,7 @@ Following both the **MathWorks example** (cascaded controller) and the **thesis*
 A key addition versus a +-tail is allocating $[K, M, N]$ demands to four fins. We compute a **local effectiveness matrix** $B(\nu) \in \mathbb{R}^{3\times4}$ numerically (small perturbations of $\delta_k$) and solve a **weighted least-squares** (with Tikhonov $\lambda$) for $\delta$:
 
 $$
-\min_\delta \|B\delta - \tau_{\text{cmd}}\|_2^2 + \lambda\|\delta\|_2^2 \text{ with } \delta_k \in [\delta_{\min}, \delta_{\max}].
+\min_\delta \|B\delta - \tau_\mathrm{cmd}\|_2^2 + \lambda\|\delta\|_2^2 \quad \text{with} \quad \delta_k \in [\delta_\mathrm{min}, \delta_\mathrm{max}].
 $$
 
 This is the same philosophy found in X-rudder allocation papers (quadruple rudder allocation & QP variants) but implemented lightweight here for runtime.
