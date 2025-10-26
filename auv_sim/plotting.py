@@ -26,14 +26,14 @@ def plot_longitudinal_response(
     plt.close("all")
     fig, axes = plt.subplots(2, 1, sharex=True, figsize=(10, 6))
 
-    axes[0].plot(time_arr, np.rad2deg(theta_cmd_arr), ":r", linewidth=3, label="theta_cmd")
-    axes[0].plot(time_arr, np.rad2deg(theta_arr), linewidth=3, label="theta")
-    axes[0].set_ylabel("theta (deg)")
+    axes[0].plot(time_arr, np.rad2deg(theta_cmd_arr), ":r", linewidth=3, label="Commanded")
+    axes[0].plot(time_arr, np.rad2deg(theta_arr), linewidth=3, label="Actual")
+    axes[0].set_ylabel("Pitch Angle (degrees)\n[Nose Up/Down Orientation]")
     axes[0].legend(loc="best")
 
     axes[1].plot(time_arr, np.rad2deg(elevator_arr), linewidth=3)
-    axes[1].set_xlabel("time (sec)")
-    axes[1].set_ylabel("delta_e (deg)")
+    axes[1].set_xlabel("Time (seconds)")
+    axes[1].set_ylabel("Elevator Control Surface (degrees)\n[Control Fin Deflection]")
 
     fig.tight_layout()
 
